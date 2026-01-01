@@ -1,0 +1,59 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>net.judahzone</groupId>
+    <artifactId>meta-zone</artifactId>
+    <version>0.2-SNAPSHOT</version>
+    <relativePath>../meta-zone/pom.xml</relativePath>
+  </parent>
+
+  <artifactId>zone-javax</artifactId>
+  <name>zone-javax</name>
+  <packaging>jar</packaging>
+
+  <dependencies>
+    <!-- core APIs / utilities -->
+    <dependency>
+      <groupId>net.judahzone</groupId>
+      <artifactId>zone-core</artifactId>
+    </dependency>
+
+    <!-- optional GUI integration (Swing helpers, interfaces) -->
+    <dependency>
+      <groupId>net.judahzone</groupId>
+      <artifactId>zone-gui</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Compiler plugin WITH Lombok annotation processing -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <source>${maven.compiler.source}</source>
+          <target>${maven.compiler.target}</target>
+          <encoding>${project.build.sourceEncoding}</encoding>
+          <showWarnings>true</showWarnings>
+          <showDeprecation>true</showDeprecation>
+          <compilerArgs>
+            <arg>-parameters</arg>
+          </compilerArgs>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>
