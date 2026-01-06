@@ -6,7 +6,7 @@
   <parent>
     <groupId>net.judahzone</groupId>
     <artifactId>meta-zone</artifactId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.3-SNAPSHOT</version>
     <relativePath>../meta-zone/pom.xml</relativePath>
   </parent>
 

@@ -1,3 +1,4 @@
+// java
 package judahzone.javax;
 
 import java.io.Closeable;
@@ -9,6 +10,7 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 import javax.swing.SwingUtilities;
 
+import judahzone.api.Asset;
 import judahzone.api.PlayAudio;
 import judahzone.api.Played;
 import judahzone.util.Recording;
@@ -32,14 +34,14 @@ import judahzone.util.WavConstants;
 public class JavaxOutSimpler implements PlayAudio, Closeable {
 
     private Recording tape;
-    private final Played timeDomain; // optional visual feedback target
+    private Played timeDomain; // optional visual feedback target
     private AudioFormat format;
 
     private volatile boolean playing = false;
     private Thread playThread;
     private volatile long playFrame = 0L; // absolute sample-frames (interleaved frames)
     private volatile Type type = Type.ONE_SHOT;
-    private volatile float mastering = 1.0f;
+    private volatile float env = 1.0f;
 
     private SourceDataLine line;
 
@@ -48,6 +50,22 @@ public class JavaxOutSimpler implements PlayAudio, Closeable {
     }
 
     @Override
+	public synchronized void setPlayed(Played timeDomain) {
+		this.timeDomain = timeDomain;
+	}
+
+    @Override
+	public synchronized void setEnv(float gain){
+		this.env = env;
+	}
+
+    @Override public synchronized void setRecording(Asset a) {
+    	if (a == null)
+    		setRecording((Recording) null);
+    	else
+			setRecording(a.recording());
+    }
+
     public synchronized void setRecording(Recording r) {
         this.tape = r;
         this.format = (r != null) ? r.getFormat() : null;
@@ -108,22 +126,25 @@ public class JavaxOutSimpler implements PlayAudio, Closeable {
     @Override
     public synchronized void rewind() {
         playFrame = 0L;
-        if (timeDomain != null) {
-            final int idx = (int) (playFrame / WavConstants.FFT_SIZE);
-            SwingUtilities.invokeLater(() -> timeDomain.setHeadIndex(idx));
-        }
+        if (timeDomain != null)
+            SwingUtilities.invokeLater(() -> timeDomain.setHead(playFrame));
     }
 
-    public synchronized void setType(Type t) {
+    @Override
+	public synchronized void setType(Type t) {
         if (t == null) t = Type.ONE_SHOT;
         this.type = t;
     }
 
     public synchronized void setMastering(float m) {
-        this.mastering = m;
+        this.env = m;
     }
 
-    public synchronized void setPlaySampleFrame(long sampleFrame) {
+    /**
+     * Implement PlayAudio.setSample by delegating to the existing setPlaySampleFrame helper.
+     */
+    @Override
+    public synchronized void setSample(long sampleFrame) {
         if (sampleFrame < 0) sampleFrame = 0;
         long total = totalFrames();
         if (total > 0 && sampleFrame >= total) sampleFrame = Math.max(0, total - 1);
@@ -134,10 +155,10 @@ public class JavaxOutSimpler implements PlayAudio, Closeable {
                 try { line.flush(); } catch (Throwable ignored) {}
             });
         }
-        if (timeDomain != null) {
-            final int idx = (int) (playFrame / WavConstants.FFT_SIZE);
-            SwingUtilities.invokeLater(() -> timeDomain.setHeadIndex(idx));
-        }
+//        if (timeDomain != null) {
+//            final int idx = (int) (playFrame / WavConstants.FFT_SIZE);
+//            SwingUtilities.invokeLater(() -> timeDomain.setHeadIndex(idx));
+//        }
     }
 
     private long totalFrames() {
@@ -235,7 +256,7 @@ public class JavaxOutSimpler implements PlayAudio, Closeable {
                         for (int i = 0; i < jack; i++) leftPad[i] = rightPad[i] = 0f;
                     }
 
-                    float m = mastering;
+                    float m = env;
                     if (m != 1.0f) {
                         for (int i = 0; i < segLen; i++) {
                             leftPad[i] *= m;
@@ -273,10 +294,8 @@ public class JavaxOutSimpler implements PlayAudio, Closeable {
                 playFrame += framesToRead;
 
                 // Update TimeDomain visual head
-                if (timeDomain != null) {
-                    final int idx = (int) (playFrame / WavConstants.FFT_SIZE);
-                    SwingUtilities.invokeLater(() -> timeDomain.setHeadIndex(idx));
-                }
+                if (timeDomain != null)
+                    SwingUtilities.invokeLater(() -> timeDomain.setHead(playFrame));
             }
         } catch (Throwable t) {
             t.printStackTrace();

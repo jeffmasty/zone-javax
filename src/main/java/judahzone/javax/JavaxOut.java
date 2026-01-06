@@ -10,6 +10,7 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 import javax.swing.SwingUtilities;
 
+import judahzone.api.Asset;
 import judahzone.api.PlayAudio;
 import judahzone.api.Played;
 import judahzone.util.RTLogger;
@@ -40,16 +41,20 @@ public class JavaxOut implements PlayAudio, Closeable {
     private volatile boolean flushRequested = false;
     private final AtomicInteger underrunCount = new AtomicInteger(0);
 
-    public JavaxOut(Played timeDomain) {
-        this.timeDomain = timeDomain;
+    public JavaxOut() {
+	}
+
+    @Override public void setPlayed(Played p) {
+    	timeDomain = p;
     }
 
-    /** Allow attaching a TimeDomain (Played) after creation. */
-    public void setTimeDomain(Played td) {
-        this.timeDomain = td;
+    @Override public synchronized void setRecording(Asset a) {
+    	if (a == null)
+    		setRecording((Recording) null);
+    	else
+			setRecording(a.recording());
     }
 
-    @Override
     public synchronized void setRecording(Recording r) {
         this.tape = r;
         this.format = (r != null) ? r.getFormat() : null;
@@ -101,20 +106,23 @@ public class JavaxOut implements PlayAudio, Closeable {
 
     @Override public synchronized void rewind() {
         playFrame = 0L;
-        if (timeDomain != null) {
-            final int idx = (int) (playFrame / WavConstants.FFT_SIZE);
-            SwingUtilities.invokeLater(() -> timeDomain.setHeadIndex(idx));
-        }
+        if (timeDomain != null)
+            SwingUtilities.invokeLater(() -> timeDomain.setHead(0));
+
     }
 
-    public synchronized void setType(Type t) {
+    @Override
+	public synchronized void setType(Type t) {
         if (t == null) t = Type.ONE_SHOT;
         this.type = t;
     }
 
-    public synchronized void setMastering(float m) { this.mastering = m; }
+    /** gain */
+    @Override
+	public synchronized void setEnv(float m) { this.mastering = m; }
 
-    public synchronized void setPlaySampleFrame(long sampleFrame) {
+    @Override
+	public synchronized void setSample(long sampleFrame) {
         if (sampleFrame < 0) sampleFrame = 0;
         long total = totalFrames();
         if (total > 0 && sampleFrame >= total) sampleFrame = Math.max(0, total - 1);
@@ -125,10 +133,10 @@ public class JavaxOut implements PlayAudio, Closeable {
                 try { line.flush(); } catch (Throwable ignored) {}
             });
         }
-        if (timeDomain != null) {
-            final int idx = (int) (playFrame / WavConstants.FFT_SIZE);
-            SwingUtilities.invokeLater(() -> timeDomain.setHeadIndex(idx));
-        }
+//        if (timeDomain != null) { // no loops
+//            final int idx = (int) (playFrame / WavConstants.FFT_SIZE);
+//            SwingUtilities.invokeLater(() -> timeDomain.setHeadIndex(idx));
+//        }
     }
 
     private long totalFrames() {
@@ -261,10 +269,8 @@ public class JavaxOut implements PlayAudio, Closeable {
 
                 playFrame += framesToRead;
 
-                if (timeDomain != null) {
-                    final int idx = (int) (playFrame / WavConstants.FFT_SIZE);
-                    SwingUtilities.invokeLater(() -> timeDomain.setHeadIndex(idx));
-                }
+                if (timeDomain != null)
+                    SwingUtilities.invokeLater(() -> timeDomain.setHead(playFrame));
             }
         } catch (Throwable t) {
             RTLogger.warn(this, t);

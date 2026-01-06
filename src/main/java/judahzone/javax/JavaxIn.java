@@ -22,8 +22,8 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 
-import judahzone.api.Live;
-import judahzone.util.Recording;
+import judahzone.api.FX.Calc;
+import judahzone.api.Transform;
 import judahzone.util.Services;
 import judahzone.util.WavConstants;
 
@@ -50,7 +50,7 @@ import judahzone.util.WavConstants;
  */
 public class JavaxIn implements Closeable {
 
-    private final Live view;
+    private final Calc<Transform> analyzer;
     private final JComboBox<Mixer.Info> devices;
     private final JButton startStop = new JButton("Start");
     private final JLabel statusLabel = new JLabel("idle");
@@ -62,8 +62,8 @@ public class JavaxIn implements Closeable {
     // ring of most recent JACK_BUFFER blocks while building up FFT windows
     private final Deque<float[][]> blockDeque = new ArrayDeque<>();
 
-    public JavaxIn(Live view) {
-        this.view = view;
+    public JavaxIn(Calc<Transform> receiver) {
+    	analyzer = receiver;
         devices = new JComboBox<>(availableMixersSupportingCapture());
 
         // restart capture on change
@@ -247,7 +247,6 @@ public class JavaxIn implements Closeable {
         final int frameSize = fmt.getFrameSize(); // bytes per frame (e.g. 4 for stereo 16-bit)
         final int bytesPerBlock = WavConstants.JACK_BUFFER * frameSize;
         final byte[] readBuf = new byte[bytesPerBlock];
-
         final int chunksPerWindow = WavConstants.CHUNKS; // FFT_SIZE / JACK_BUFFER
 
         while (running && !Thread.currentThread().isInterrupted()) {
@@ -288,36 +287,28 @@ public class JavaxIn implements Closeable {
                 try { Thread.sleep(5); } catch (InterruptedException ie) { break; }
             }
 
-            // append to deque and if we have enough blocks make a Recording window and call analyze
+            // append to deque to preserve a short history for other uses, but feed the fresh block
             synchronized (blockDeque) {
                 blockDeque.addLast(new float[][] { left, right });
                 // keep deque reasonable long (cap to chunksPerWindow * 4)
                 while (blockDeque.size() > chunksPerWindow * 4) blockDeque.removeFirst();
+            }
 
-                if (blockDeque.size() >= chunksPerWindow) {
-                    // collect the most recent chunksPerWindow blocks into a Recording in chronological order
-                    Recording window = new Recording();
-                    Object[] arr = blockDeque.toArray();
-                    int startIdx = arr.length - chunksPerWindow; // take last N blocks
-                    for (int i = startIdx; i < arr.length; i++) {
-                        float[][] block = (float[][]) arr[i];
-                        window.add(block);
-                    }
-                    // call analyze on the EDT
-                    SwingUtilities.invokeLater(() -> {
-                        try {
-                            view.analyze(window.getLeft(), window.getChannel(1));
-                        } catch (Throwable t) {
-                            // don't let exceptions kill capture thread
-                            t.printStackTrace();
-                        }
-                    });
+            // Feed this JACK-sized block into the provided analyzer (real-time entry point).
+            // Analysis implementations (e.g., judahzone.fx.analysis.Analysis/Transformer) will
+            // accumulate these blocks and perform FFT/RMS off the capture thread.
+            if (analyzer != null) {
+                try {
+                    analyzer.process(left, right);
+                } catch (Throwable t) {
+                    // prevent analyzer exceptions from killing capture thread
+                    t.printStackTrace();
                 }
             }
         } // end while
         updateStatus("stopped");
-    }
 
+    }
     private static int sampleSizeInBytes(AudioFormat fmt) {
         return (fmt.getSampleSizeInBits() + 7) / 8;
     }
