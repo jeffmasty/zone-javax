@@ -13,15 +13,15 @@ import javax.sound.sampled.DataLine;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.TargetDataLine;
 
-import judahzone.api.Ports;
-import judahzone.api.Ports.Connect;
-import judahzone.api.Ports.IO;
-import judahzone.api.Ports.PortData;
-import judahzone.api.Ports.Request;
-import judahzone.api.Ports.Type;
-import judahzone.api.Ports.Wrapper;
+import judahzone.api.AudioEngine;
+import judahzone.api.AudioEngine.Connect;
+import judahzone.api.AudioEngine.IO;
+import judahzone.api.AudioEngine.PortData;
+import judahzone.api.AudioEngine.Request;
+import judahzone.api.AudioEngine.Type;
+import judahzone.api.AudioEngine.Wrapper;
 
-public class JavaxHelper implements Ports.Provider {
+public class JavaxHelper implements AudioEngine.Provider {
 
     @Override
     public void query(PortData consumer) {

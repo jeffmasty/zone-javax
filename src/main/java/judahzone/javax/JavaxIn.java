@@ -23,7 +23,7 @@ import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 
 import judahzone.api.FX.Calc;
-import judahzone.api.Transform;
+import judahzone.data.Transform;
 import judahzone.util.Services;
 import judahzone.util.WavConstants;
 
