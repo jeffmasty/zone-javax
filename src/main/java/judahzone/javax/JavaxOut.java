@@ -119,7 +119,7 @@ public class JavaxOut implements PlayAudio, Closeable {
 
     /** gain */
     @Override
-	public synchronized void setEnv(float m) { this.mastering = m; }
+	public synchronized void setAmp(float m) { this.mastering = m; }
 
     @Override
 	public synchronized void setSample(long sampleFrame) {

@@ -55,7 +55,7 @@ public class JavaxOutSimpler implements PlayAudio, Closeable {
 	}
 
     @Override
-	public synchronized void setEnv(float gain){
+	public synchronized void setAmp(float gain){
 		this.env = env;
 	}
 
